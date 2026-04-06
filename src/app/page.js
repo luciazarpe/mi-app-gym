@@ -582,12 +582,13 @@ const styles = {
   },
   kicker: {
     margin: 0,
-    color: "#666",
+    color: "#aaa",
     fontSize: 14,
   },
   title: {
     margin: "4px 0 0 0",
     fontSize: 32,
+    color : "#f9f9f9",
   },
   card: {
     background: "#ffffff",
