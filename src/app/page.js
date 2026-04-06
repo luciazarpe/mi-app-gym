@@ -563,7 +563,7 @@ export default function Page() {
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#f7f7f7",
+    background: "#111",
     padding: 16,
     fontFamily: "Arial, sans-serif",
   },
@@ -573,6 +573,7 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: 16,
+    color: "white",
   },
   header: {
     display: "flex",
@@ -590,11 +591,9 @@ const styles = {
   },
   card: {
     background: "#ffffff",
-    borderRadius: 24,
+    borderRadius: 20,
     padding: 16,
-    boxShadow: "0 6px 20px rgba(0,0,0,0.06)",
-    border: "1px solid #e5e5e5",
-    
+    border: "none",
   },
   sectionTitle: {
     marginTop: 0,
@@ -634,13 +633,12 @@ const styles = {
   },
   input: {
     width: "100%",
-    boxSizing: "border-box",
     padding: 14,
     borderRadius: 12,
-    border: "1px solid #ccc",
-    background: "#fff",
+    border: "1px solid #ddd",
+    background: "#fafafa",
     fontSize: 16,
-  },
+  },  
 
   textarea: {
     width: "100%",
@@ -659,23 +657,18 @@ const styles = {
   },
   primaryButton: {
     width: "100%",
-    border: "none",
     borderRadius: 16,
     padding: 14,
-    background: "#111",
+    background: "#000",
     color: "white",
     fontWeight: 700,
-    cursor: "pointer",
-    fontSize: 16,
   },
   secondaryButton: {
     flex: 1,
-    border: "none",
     borderRadius: 16,
     padding: 12,
-    background: "#e8e8e8",
+    background: "#e5e5e5",
     fontWeight: 700,
-    cursor: "pointer",
   },
   resetButton: {
     border: "none",
@@ -703,7 +696,7 @@ const styles = {
   },
   exerciseMeta: {
     fontSize: 13,
-    color: "#000000",
+    color: "#333",
     marginTop: 6,
     lineHeight: 1.45,
   },
@@ -719,8 +712,8 @@ const styles = {
     borderRadius: 16,
     padding: 12,
     marginBottom: 12,
-    background: "#ffffff",
-    border: "1px solid #e5e5e5",
+    background: "#fff",
+    border: "1px solid #ddd",
   },
   setCard: {
     border: "1px solid #ececec",
@@ -749,7 +742,7 @@ const styles = {
     marginBottom: 8,
   },
   date: {
-    color: "#666",
+    color: "#333",
     fontSize: 13,
   },
   historyLine: {
@@ -761,10 +754,10 @@ const styles = {
   historyNotes: {
     marginTop: 6,
     fontSize: 13,
-    color: "#666",
+    color: "#333",
   },
   emptyText: {
-    color: "#666",
+    color: "#333",
     margin: 0,
   },
 };
