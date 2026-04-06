@@ -573,7 +573,7 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: 16,
-    color: "white",
+    color: "#111",
   },
   header: {
     display: "flex",
