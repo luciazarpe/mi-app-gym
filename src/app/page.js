@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const STORAGE_KEY = "gym_running_app_v1";
+const STORAGE_KEY = "gym_running_app_v2";
 
 const defaultRoutines = [
   { id: 1, name: "Pierna 1", type: "gym", exercises: [] },
@@ -18,12 +18,7 @@ export default function Page() {
   const [selectedRoutineId, setSelectedRoutineId] = useState(1);
   const [history, setHistory] = useState([]);
   const [newRoutineName, setNewRoutineName] = useState("");
-  const [newGymExercise, setNewGymExercise] = useState({
-    name: "",
-    targetSeries: "",
-    targetReps: "",
-    rest: "",
-  });
+  const [newGymExercise, setNewGymExercise] = useState({ name: "" });
   const [exerciseData, setExerciseData] = useState({});
   const [sessionNotes, setSessionNotes] = useState("");
   const [runningData, setRunningData] = useState({
@@ -83,12 +78,8 @@ export default function Page() {
     const routine = routines.find((r) => r.id === routineId);
     if (!routine) return;
 
-    if (
-      ["Pierna 1", "Pierna 2", "Pierna 3", "Superior", "Running"].includes(
-        routine.name
-      )
-    ) {
-      alert("No borro las rutinas base para que no se te rompa la app.");
+    if (["Pierna 1", "Pierna 2", "Pierna 3", "Superior", "Running"].includes(routine.name)) {
+      alert("No borro las rutinas base para que no se rompa la app.");
       return;
     }
 
@@ -107,9 +98,6 @@ export default function Page() {
     const exercise = {
       id: Date.now(),
       name: newGymExercise.name.trim(),
-      targetSeries: newGymExercise.targetSeries || "",
-      targetReps: newGymExercise.targetReps || "",
-      rest: newGymExercise.rest || "",
     };
 
     setRoutines((prev) =>
@@ -120,12 +108,7 @@ export default function Page() {
       )
     );
 
-    setNewGymExercise({
-      name: "",
-      targetSeries: "",
-      targetReps: "",
-      rest: "",
-    });
+    setNewGymExercise({ name: "" });
   };
 
   const deleteExercise = (exerciseId) => {
@@ -163,7 +146,7 @@ export default function Page() {
     const currentSets = exerciseData[exerciseId]?.sets || [];
     updateExerciseData(exerciseId, "sets", [
       ...currentSets,
-      { reps: "", weight: "" },
+      { reps: "", weight: "", note: "" },
     ]);
   };
 
@@ -174,7 +157,7 @@ export default function Page() {
   };
 
   const updateSetField = (exerciseId, setIndex, field, value) => {
-    const currentSets = exerciseData[exerciseId]?.sets || [{ reps: "", weight: "" }];
+    const currentSets = exerciseData[exerciseId]?.sets || [{ reps: "", weight: "", note: "" }];
     const nextSets = [...currentSets];
     nextSets[setIndex] = {
       ...nextSets[setIndex],
@@ -185,7 +168,27 @@ export default function Page() {
 
   const getDisplayedSets = (exerciseId) => {
     const savedSets = exerciseData[exerciseId]?.sets || [];
-    return savedSets.length > 0 ? savedSets : [{ reps: "", weight: "" }];
+    return savedSets.length > 0 ? savedSets : [{ reps: "", weight: "", note: "" }];
+  };
+
+  const getLastExerciseSession = (exerciseId) => {
+    for (const session of history) {
+      if (session.type !== "gym") continue;
+      const foundExercise = session.exercises.find((exercise) => exercise.exerciseId === exerciseId);
+      if (foundExercise) return foundExercise;
+    }
+    return null;
+  };
+
+  const formatLastSession = (exerciseId) => {
+    const last = getLastExerciseSession(exerciseId);
+    if (!last || !last.sets || last.sets.length === 0) return "Todavía no hay pesos guardados";
+    return last.sets
+      .map(
+        (set, setIndex) =>
+          `S${setIndex + 1} ${set.reps || "-"} reps / ${set.weight || "-"} kg${set.note ? ` (${set.note})` : ""}`
+      )
+      .join(" · ");
   };
 
   const saveGymSession = () => {
@@ -200,9 +203,6 @@ export default function Page() {
       exercises: selectedRoutine.exercises.map((exercise) => ({
         exerciseId: exercise.id,
         name: exercise.name,
-        plannedSeries: exercise.targetSeries,
-        plannedReps: exercise.targetReps,
-        plannedRest: exercise.rest,
         sets: exerciseData[exercise.id]?.sets || [],
         rest: exerciseData[exercise.id]?.rest || "",
         notes: exerciseData[exercise.id]?.notes || "",
@@ -284,21 +284,14 @@ export default function Page() {
                   onClick={() => setSelectedRoutineId(routine.id)}
                   style={{
                     ...styles.routineButton,
-                    ...(selectedRoutineId === routine.id
-                      ? styles.routineButtonActive
-                      : {}),
+                    ...(selectedRoutineId === routine.id ? styles.routineButtonActive : {}),
                   }}
                 >
                   {routine.name}
                 </button>
 
-                {![("Pierna 1"), ("Pierna 2"), ("Pierna 3"), ("Superior"), ("Running")].includes(
-                  routine.name
-                ) && (
-                  <button
-                    onClick={() => deleteRoutine(routine.id)}
-                    style={styles.smallDeleteButton}
-                  >
+                {!["Pierna 1", "Pierna 2", "Pierna 3", "Superior", "Running"].includes(routine.name) && (
+                  <button onClick={() => deleteRoutine(routine.id)} style={styles.smallDeleteButton}>
                     ×
                   </button>
                 )}
@@ -314,16 +307,10 @@ export default function Page() {
               onChange={(e) => setNewRoutineName(e.target.value)}
             />
             <div style={styles.inlineButtons}>
-              <button
-                style={styles.secondaryButton}
-                onClick={() => createRoutine("gym")}
-              >
+              <button style={styles.secondaryButton} onClick={() => createRoutine("gym")}>
                 Crear gym
               </button>
-              <button
-                style={styles.secondaryButton}
-                onClick={() => createRoutine("running")}
-              >
+              <button style={styles.secondaryButton} onClick={() => createRoutine("running")}>
                 Crear running
               </button>
             </div>
@@ -338,41 +325,7 @@ export default function Page() {
               style={styles.input}
               placeholder="Ejercicio"
               value={newGymExercise.name}
-              onChange={(e) =>
-                setNewGymExercise((prev) => ({ ...prev, name: e.target.value }))
-              }
-            />
-            <div style={styles.twoCols}>
-              <input
-                style={styles.input}
-                placeholder="Series objetivo"
-                value={newGymExercise.targetSeries}
-                onChange={(e) =>
-                  setNewGymExercise((prev) => ({
-                    ...prev,
-                    targetSeries: e.target.value,
-                  }))
-                }
-              />
-              <input
-                style={styles.input}
-                placeholder="Reps objetivo"
-                value={newGymExercise.targetReps}
-                onChange={(e) =>
-                  setNewGymExercise((prev) => ({
-                    ...prev,
-                    targetReps: e.target.value,
-                  }))
-                }
-              />
-            </div>
-            <input
-              style={styles.input}
-              placeholder="Descanso objetivo"
-              value={newGymExercise.rest}
-              onChange={(e) =>
-                setNewGymExercise((prev) => ({ ...prev, rest: e.target.value }))
-              }
+              onChange={(e) => setNewGymExercise({ name: e.target.value })}
             />
 
             <button style={styles.primaryButton} onClick={addExerciseToRoutine}>
@@ -387,14 +340,8 @@ export default function Page() {
                   <div key={exercise.id} style={styles.exerciseRow}>
                     <div>
                       <strong>{exercise.name}</strong>
-                      <div style={styles.exerciseMeta}>
-                        {exercise.targetSeries || "-"} series · {exercise.targetReps || "-"} reps · descanso {exercise.rest || "-"}
-                      </div>
                     </div>
-                    <button
-                      onClick={() => deleteExercise(exercise.id)}
-                      style={styles.deleteButton}
-                    >
+                    <button onClick={() => deleteExercise(exercise.id)} style={styles.deleteButton}>
                       Borrar
                     </button>
                   </div>
@@ -410,16 +357,12 @@ export default function Page() {
           {selectedRoutine?.type === "gym" ? (
             <>
               {selectedRoutine.exercises.length === 0 ? (
-                <p style={styles.emptyText}>
-                  Añade ejercicios arriba para poder registrar el entreno.
-                </p>
+                <p style={styles.emptyText}>Añade ejercicios arriba para poder registrar el entreno.</p>
               ) : (
                 selectedRoutine.exercises.map((exercise) => (
                   <div key={exercise.id} style={styles.logCard}>
                     <strong>{exercise.name}</strong>
-                    <div style={styles.exerciseMeta}>
-                      Objetivo: {exercise.targetSeries || "-"} series · {exercise.targetReps || "-"} reps · descanso {exercise.rest || "-"}
-                    </div>
+                    <div style={styles.exerciseMeta}>Última vez: {formatLastSession(exercise.id)}</div>
 
                     <div style={{ marginTop: 10, marginBottom: 10 }}>
                       {getDisplayedSets(exercise.id).map((set, index) => (
@@ -430,33 +373,29 @@ export default function Page() {
                               style={styles.input}
                               placeholder="Reps"
                               value={set.reps || ""}
-                              onChange={(e) =>
-                                updateSetField(exercise.id, index, "reps", e.target.value)
-                              }
+                              onChange={(e) => updateSetField(exercise.id, index, "reps", e.target.value)}
                             />
                             <input
                               style={styles.input}
                               placeholder="Peso"
                               value={set.weight || ""}
-                              onChange={(e) =>
-                                updateSetField(exercise.id, index, "weight", e.target.value)
-                              }
+                              onChange={(e) => updateSetField(exercise.id, index, "weight", e.target.value)}
                             />
                           </div>
+                          <textarea
+                            style={styles.textarea}
+                            placeholder="Nota de esta serie"
+                            value={set.note || ""}
+                            onChange={(e) => updateSetField(exercise.id, index, "note", e.target.value)}
+                          />
                         </div>
                       ))}
 
                       <div style={styles.inlineButtons}>
-                        <button
-                          style={styles.secondaryButton}
-                          onClick={() => addSetToExercise(exercise.id)}
-                        >
+                        <button style={styles.secondaryButton} onClick={() => addSetToExercise(exercise.id)}>
                           + Añadir serie
                         </button>
-                        <button
-                          style={styles.secondaryButton}
-                          onClick={() => removeSetFromExercise(exercise.id)}
-                        >
+                        <button style={styles.secondaryButton} onClick={() => removeSetFromExercise(exercise.id)}>
                           - Quitar serie
                         </button>
                       </div>
@@ -464,20 +403,16 @@ export default function Page() {
 
                     <input
                       style={styles.input}
-                      placeholder="Descanso real"
+                      placeholder="Descanso general del ejercicio"
                       value={exerciseData[exercise.id]?.rest || ""}
-                      onChange={(e) =>
-                        updateExerciseData(exercise.id, "rest", e.target.value)
-                      }
+                      onChange={(e) => updateExerciseData(exercise.id, "rest", e.target.value)}
                     />
 
                     <textarea
                       style={styles.textarea}
-                      placeholder="Notas"
+                      placeholder="Notas generales del ejercicio"
                       value={exerciseData[exercise.id]?.notes || ""}
-                      onChange={(e) =>
-                        updateExerciseData(exercise.id, "notes", e.target.value)
-                      }
+                      onChange={(e) => updateExerciseData(exercise.id, "notes", e.target.value)}
                     />
                   </div>
                 ))
@@ -500,38 +435,27 @@ export default function Page() {
                 style={styles.input}
                 placeholder="Km"
                 value={runningData.km}
-                onChange={(e) =>
-                  setRunningData((prev) => ({ ...prev, km: e.target.value }))
-                }
+                onChange={(e) => setRunningData((prev) => ({ ...prev, km: e.target.value }))}
               />
               <div style={styles.twoCols}>
                 <input
                   style={styles.input}
                   placeholder="Tiempo"
                   value={runningData.time}
-                  onChange={(e) =>
-                    setRunningData((prev) => ({ ...prev, time: e.target.value }))
-                  }
+                  onChange={(e) => setRunningData((prev) => ({ ...prev, time: e.target.value }))}
                 />
                 <input
                   style={styles.input}
                   placeholder="Ritmo"
                   value={runningData.pace}
-                  onChange={(e) =>
-                    setRunningData((prev) => ({ ...prev, pace: e.target.value }))
-                  }
+                  onChange={(e) => setRunningData((prev) => ({ ...prev, pace: e.target.value }))}
                 />
               </div>
               <textarea
                 style={styles.textarea}
                 placeholder="Sensaciones"
                 value={runningData.feelings}
-                onChange={(e) =>
-                  setRunningData((prev) => ({
-                    ...prev,
-                    feelings: e.target.value,
-                  }))
-                }
+                onChange={(e) => setRunningData((prev) => ({ ...prev, feelings: e.target.value }))}
               />
 
               <button style={styles.primaryButton} onClick={saveRunningSession}>
@@ -562,24 +486,20 @@ export default function Page() {
                           ? exercise.sets
                               .map(
                                 (set, setIndex) =>
-                                  `S${setIndex + 1} ${set.reps || "-"} reps / ${set.weight || "-"} kg`
+                                  `S${setIndex + 1} ${set.reps || "-"} reps / ${set.weight || "-"} kg${set.note ? ` (${set.note})` : ""}`
                               )
                               .join(" · ")
                           : "sin series registradas"}
                       </div>
                     ))}
-                    {item.notes ? (
-                      <div style={styles.historyNotes}>Notas: {item.notes}</div>
-                    ) : null}
+                    {item.notes ? <div style={styles.historyNotes}>Notas: {item.notes}</div> : null}
                   </div>
                 ) : (
                   <div>
                     <div style={styles.historyLine}>
                       {item.km || "-"} km · {item.time || "-"} · ritmo {item.pace || "-"}
                     </div>
-                    {item.feelings ? (
-                      <div style={styles.historyNotes}>{item.feelings}</div>
-                    ) : null}
+                    {item.feelings ? <div style={styles.historyNotes}>{item.feelings}</div> : null}
                   </div>
                 )}
               </div>
@@ -734,7 +654,8 @@ const styles = {
   exerciseMeta: {
     fontSize: 13,
     color: "#666",
-    marginTop: 4,
+    marginTop: 6,
+    lineHeight: 1.45,
   },
   deleteButton: {
     border: "none",
@@ -785,6 +706,7 @@ const styles = {
     fontSize: 14,
     color: "#333",
     marginBottom: 4,
+    lineHeight: 1.5,
   },
   historyNotes: {
     marginTop: 6,
