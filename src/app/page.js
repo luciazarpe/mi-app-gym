@@ -563,8 +563,7 @@ export default function Page() {
 const styles = {
   page: {
     minHeight: "100vh",
-    background:
-      "linear-gradient(180deg, rgb(255,245,247) 0%, rgb(255,255,255) 50%, rgb(250,244,255) 100%)",
+    background: "#f7f7f7",
     padding: 16,
     fontFamily: "Arial, sans-serif",
   },
@@ -590,11 +589,12 @@ const styles = {
     fontSize: 32,
   },
   card: {
-    background: "white",
+    background: "#ffffff",
     borderRadius: 24,
     padding: 16,
     boxShadow: "0 6px 20px rgba(0,0,0,0.06)",
-    border: "1px solid #eee",
+    border: "1px solid #e5e5e5",
+    
   },
   sectionTitle: {
     marginTop: 0,
@@ -635,12 +635,13 @@ const styles = {
   input: {
     width: "100%",
     boxSizing: "border-box",
-    padding: 12,
-    borderRadius: 14,
-    border: "1px solid #ddd",
-    marginBottom: 10,
+    padding: 14,
+    borderRadius: 12,
+    border: "1px solid #ccc",
+    background: "#fff",
     fontSize: 16,
   },
+
   textarea: {
     width: "100%",
     boxSizing: "border-box",
@@ -672,7 +673,7 @@ const styles = {
     border: "none",
     borderRadius: 16,
     padding: 12,
-    background: "#f0f0f0",
+    background: "#e8e8e8",
     fontWeight: 700,
     cursor: "pointer",
   },
@@ -702,7 +703,7 @@ const styles = {
   },
   exerciseMeta: {
     fontSize: 13,
-    color: "#666",
+    color: "#000000",
     marginTop: 6,
     lineHeight: 1.45,
   },
@@ -715,11 +716,11 @@ const styles = {
     fontWeight: 700,
   },
   logCard: {
-    border: "1px solid #eee",
     borderRadius: 16,
     padding: 12,
     marginBottom: 12,
-    background: "#fafafa",
+    background: "#ffffff",
+    border: "1px solid #e5e5e5",
   },
   setCard: {
     border: "1px solid #ececec",
