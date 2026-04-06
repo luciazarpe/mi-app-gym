@@ -290,6 +290,36 @@ export default function Page() {
           >
             Descargar datos
           </button>
+          <input
+            type="file"
+            accept="application/json"
+            onChange={(event) => {
+              const file = event.target.files[0];
+              if (!file) return;
+
+              const reader = new FileReader();
+
+              reader.onload = (e) => {
+                try {
+                  const parsed = JSON.parse(e.target.result);
+
+                  if (!parsed.routines || !parsed.history) {
+                    alert("Archivo no válido");
+                    return;
+                  }
+
+                  localStorage.setItem("gym_running_app_v2", JSON.stringify(parsed));
+
+                  alert("Datos importados correctamente. Recarga la página.");
+                  window.location.reload();
+                } catch (err) {
+                  alert("Error leyendo el archivo");
+                }
+              };
+
+              reader.readAsText(file);
+            }}
+          />
         </div>
         
 
