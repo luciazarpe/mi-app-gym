@@ -26,6 +26,9 @@ export default function Page() {
   const [runningData, setRunningData] = useState({ km: "", time: "", pace: "", feelings: "" });
   const [activeTab, setActiveTab] = useState("entreno");
   const [planLoaded, setPlanLoaded] = useState(false);
+  const [skippedExercises, setSkippedExercises] = useState(new Set());
+  const [extraExercises, setExtraExercises] = useState([]);
+  const [newExtraName, setNewExtraName] = useState("");
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -63,6 +66,9 @@ export default function Page() {
     setExerciseData({});
     setSessionNotes("");
     setPlanLoaded(false);
+    setSkippedExercises(new Set());
+    setExtraExercises([]);
+    setNewExtraName("");
     setActiveTab("entreno");
   };
 
@@ -106,6 +112,20 @@ export default function Page() {
       delete copy[exId];
       return copy;
     });
+  };
+
+  const moveExercise = (exId, direction) => {
+    setRoutines((prev) =>
+      prev.map((r) => {
+        if (r.id !== selectedRoutine.id) return r;
+        const exs = [...r.exercises];
+        const idx = exs.findIndex((e) => e.id === exId);
+        const newIdx = idx + direction;
+        if (newIdx < 0 || newIdx >= exs.length) return r;
+        [exs[idx], exs[newIdx]] = [exs[newIdx], exs[idx]];
+        return { ...r, exercises: exs };
+      })
+    );
   };
 
   // ── Plan helpers ──────────────────────────────────────────────
@@ -227,17 +247,44 @@ export default function Page() {
       .join(" · ");
   };
 
+  const toggleSkip = (exId) => {
+    setSkippedExercises((prev) => {
+      const next = new Set(prev);
+      next.has(exId) ? next.delete(exId) : next.add(exId);
+      return next;
+    });
+  };
+
+  const addExtraExercise = () => {
+    if (!newExtraName.trim()) return;
+    const ex = { id: `extra_${Date.now()}`, name: newExtraName.trim(), isExtra: true };
+    setExtraExercises((prev) => [...prev, ex]);
+    setNewExtraName("");
+  };
+
+  const removeExtraExercise = (exId) => {
+    setExtraExercises((prev) => prev.filter((e) => e.id !== exId));
+    setExerciseData((prev) => {
+      const copy = { ...prev };
+      delete copy[exId];
+      return copy;
+    });
+  };
+
   const saveGymSession = () => {
     if (!selectedRoutine || selectedRoutine.type !== "gym") return;
+    const activeExercises = selectedRoutine.exercises.filter((ex) => !skippedExercises.has(ex.id));
+    const allExercises = [...activeExercises, ...extraExercises];
     const session = {
       id: Date.now(),
       date: new Date().toLocaleDateString("es-ES"),
       routine: selectedRoutine.name,
       type: "gym",
       notes: sessionNotes,
-      exercises: selectedRoutine.exercises.map((ex) => ({
+      exercises: allExercises.map((ex) => ({
         exerciseId: ex.id,
         name: ex.name,
+        isExtra: ex.isExtra || false,
         sets: exerciseData[ex.id]?.sets || [],
         rest: exerciseData[ex.id]?.rest || "",
         notes: exerciseData[ex.id]?.notes || "",
@@ -247,6 +294,9 @@ export default function Page() {
     setExerciseData({});
     setSessionNotes("");
     setPlanLoaded(false);
+    setSkippedExercises(new Set());
+    setExtraExercises([]);
+    setNewExtraName("");
     alert("Entrenamiento guardado");
   };
 
@@ -274,6 +324,9 @@ export default function Page() {
     setSessionNotes("");
     setRunningData({ km: "", time: "", pace: "", feelings: "" });
     setPlanLoaded(false);
+    setSkippedExercises(new Set());
+    setExtraExercises([]);
+    setNewExtraName("");
   };
 
   const exportData = () => {
@@ -461,10 +514,22 @@ export default function Page() {
                     {selectedRoutine.exercises.length === 0 ? (
                       <p style={s.emptyText}>Todavía no hay ejercicios.</p>
                     ) : (
-                      selectedRoutine.exercises.map((ex) => (
+                      selectedRoutine.exercises.map((ex, idx) => (
                         <div key={ex.id} style={s.exerciseRow}>
-                          <strong>{ex.name}</strong>
-                          <button style={s.deleteButton} onClick={() => deleteExercise(ex.id)}>Borrar</button>
+                          <strong style={{ flex: 1 }}>{ex.name}</strong>
+                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <button
+                              style={s.moveButton}
+                              onClick={() => moveExercise(ex.id, -1)}
+                              disabled={idx === 0}
+                            >↑</button>
+                            <button
+                              style={s.moveButton}
+                              onClick={() => moveExercise(ex.id, 1)}
+                              disabled={idx === selectedRoutine.exercises.length - 1}
+                            >↓</button>
+                            <button style={s.deleteButton} onClick={() => deleteExercise(ex.id)}>Borrar</button>
+                          </div>
                         </div>
                       ))
                     )}
@@ -486,62 +551,128 @@ export default function Page() {
                         )}
 
                         {selectedRoutine.exercises.map((ex) => {
+                          const isSkipped = skippedExercises.has(ex.id);
                           const sets = getDisplayedSets(ex.id);
                           const ep = (selectedRoutine.plan || {})[ex.id];
                           const hasPlanEx = ep && ep.sets && ep.sets.some((ps) => ps.reps || ps.weight);
                           return (
-                            <div key={ex.id} style={s.logCard}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                                <strong>{ex.name}</strong>
-                                {hasPlanEx && <span style={s.planBadge}>con plan</span>}
-                              </div>
-                              <div style={s.exerciseMeta}>Última vez: {formatLast(ex.id)}</div>
-
-                              <div style={{ marginTop: 10 }}>
-                                {sets.map((set, i) => {
-                                  const ps = ep?.sets?.[i] || null;
-                                  const isModified =
-                                    ps &&
-                                    ((ps.reps && set.reps && set.reps !== ps.reps) ||
-                                      (ps.weight && set.weight && set.weight !== ps.weight));
-                                  return (
-                                    <div key={i} style={s.setCard}>
-                                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
-                                        <span style={s.setTitle}>Serie {i + 1}</span>
-                                        {ps && (ps.reps || ps.weight) && (
-                                          <span style={s.setMeta}>objetivo: {ps.reps || "-"} reps / {ps.weight || "-"} kg</span>
-                                        )}
-                                        {isModified && <span style={s.modBadge}>modificado</span>}
-                                      </div>
-                                      <div style={s.twoCols}>
-                                        <input style={s.input} placeholder="Reps" value={set.reps || ""}
-                                          onChange={(e) => updateExSet(ex.id, i, "reps", e.target.value)} />
-                                        <input style={s.input} placeholder="Peso" value={set.weight || ""}
-                                          onChange={(e) => updateExSet(ex.id, i, "weight", e.target.value)} />
-                                      </div>
-                                      <input style={s.input} placeholder="Nota de esta serie" value={set.note || ""}
-                                        onChange={(e) => updateExSet(ex.id, i, "note", e.target.value)} />
-                                    </div>
-                                  );
-                                })}
+                            <div key={ex.id} style={{ ...s.logCard, ...(isSkipped ? s.logCardSkipped : {}) }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "space-between" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                  <strong style={{ color: isSkipped ? "#aaa" : "#111", textDecoration: isSkipped ? "line-through" : "none" }}>{ex.name}</strong>
+                                  {hasPlanEx && !isSkipped && <span style={s.planBadge}>con plan</span>}
+                                  {isSkipped && <span style={s.skipBadge}>saltado</span>}
+                                </div>
+                                <button
+                                  style={isSkipped ? s.unskipButton : s.skipButton}
+                                  onClick={() => toggleSkip(ex.id)}
+                                >
+                                  {isSkipped ? "Recuperar" : "Saltar"}
+                                </button>
                               </div>
 
-                              <div style={s.inlineButtons}>
-                                <button style={s.secondaryButton} onClick={() => addExSet(ex.id)}>+ Añadir serie</button>
-                                <button style={s.secondaryButton} onClick={() => removeExSet(ex.id)}>− Quitar serie</button>
-                              </div>
-
-                              <input style={{ ...s.input, marginTop: 8 }} placeholder="Descanso"
-                                value={exerciseData[ex.id]?.rest || ""}
-                                onChange={(e) => updateExField(ex.id, "rest", e.target.value)} />
-                              <textarea style={s.textarea} placeholder="Notas generales del ejercicio"
-                                value={exerciseData[ex.id]?.notes || ""}
-                                onChange={(e) => updateExField(ex.id, "notes", e.target.value)} />
+                              {!isSkipped && (
+                                <>
+                                  <div style={s.exerciseMeta}>Última vez: {formatLast(ex.id)}</div>
+                                  <div style={{ marginTop: 10 }}>
+                                    {sets.map((set, i) => {
+                                      const ps = ep?.sets?.[i] || null;
+                                      const isModified =
+                                        ps &&
+                                        ((ps.reps && set.reps && set.reps !== ps.reps) ||
+                                          (ps.weight && set.weight && set.weight !== ps.weight));
+                                      return (
+                                        <div key={i} style={s.setCard}>
+                                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+                                            <span style={s.setTitle}>Serie {i + 1}</span>
+                                            {ps && (ps.reps || ps.weight) && (
+                                              <span style={s.setMeta}>objetivo: {ps.reps || "-"} reps / {ps.weight || "-"} kg</span>
+                                            )}
+                                            {isModified && <span style={s.modBadge}>modificado</span>}
+                                          </div>
+                                          <div style={s.twoCols}>
+                                            <input style={s.input} placeholder="Reps" value={set.reps || ""}
+                                              onChange={(e) => updateExSet(ex.id, i, "reps", e.target.value)} />
+                                            <input style={s.input} placeholder="Peso" value={set.weight || ""}
+                                              onChange={(e) => updateExSet(ex.id, i, "weight", e.target.value)} />
+                                          </div>
+                                          <input style={s.input} placeholder="Nota de esta serie" value={set.note || ""}
+                                            onChange={(e) => updateExSet(ex.id, i, "note", e.target.value)} />
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                  <div style={s.inlineButtons}>
+                                    <button style={s.secondaryButton} onClick={() => addExSet(ex.id)}>+ Añadir serie</button>
+                                    <button style={s.secondaryButton} onClick={() => removeExSet(ex.id)}>− Quitar serie</button>
+                                  </div>
+                                  <input style={{ ...s.input, marginTop: 8 }} placeholder="Descanso"
+                                    value={exerciseData[ex.id]?.rest || ""}
+                                    onChange={(e) => updateExField(ex.id, "rest", e.target.value)} />
+                                  <textarea style={s.textarea} placeholder="Notas generales del ejercicio"
+                                    value={exerciseData[ex.id]?.notes || ""}
+                                    onChange={(e) => updateExField(ex.id, "notes", e.target.value)} />
+                                </>
+                              )}
                             </div>
                           );
                         })}
 
-                        <textarea style={s.textarea} placeholder="Notas generales del entreno"
+                        {/* Ejercicios extra */}
+                        {extraExercises.map((ex) => (
+                          <div key={ex.id} style={s.logCardExtra}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "space-between", marginBottom: 8 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <strong>{ex.name}</strong>
+                                <span style={s.extraBadge}>extra</span>
+                              </div>
+                              <button style={s.skipButton} onClick={() => removeExtraExercise(ex.id)}>Quitar</button>
+                            </div>
+                            <div style={s.exerciseMeta}>Última vez: {formatLast(ex.id)}</div>
+                            <div style={{ marginTop: 10 }}>
+                              {getDisplayedSets(ex.id).map((set, i) => (
+                                <div key={i} style={s.setCard}>
+                                  <div style={{ marginBottom: 6 }}><span style={s.setTitle}>Serie {i + 1}</span></div>
+                                  <div style={s.twoCols}>
+                                    <input style={s.input} placeholder="Reps" value={set.reps || ""}
+                                      onChange={(e) => updateExSet(ex.id, i, "reps", e.target.value)} />
+                                    <input style={s.input} placeholder="Peso" value={set.weight || ""}
+                                      onChange={(e) => updateExSet(ex.id, i, "weight", e.target.value)} />
+                                  </div>
+                                  <input style={s.input} placeholder="Nota de esta serie" value={set.note || ""}
+                                    onChange={(e) => updateExSet(ex.id, i, "note", e.target.value)} />
+                                </div>
+                              ))}
+                            </div>
+                            <div style={s.inlineButtons}>
+                              <button style={s.secondaryButton} onClick={() => addExSet(ex.id)}>+ Añadir serie</button>
+                              <button style={s.secondaryButton} onClick={() => removeExSet(ex.id)}>− Quitar serie</button>
+                            </div>
+                            <input style={{ ...s.input, marginTop: 8 }} placeholder="Descanso"
+                              value={exerciseData[ex.id]?.rest || ""}
+                              onChange={(e) => updateExField(ex.id, "rest", e.target.value)} />
+                            <textarea style={s.textarea} placeholder="Notas generales del ejercicio"
+                              value={exerciseData[ex.id]?.notes || ""}
+                              onChange={(e) => updateExField(ex.id, "notes", e.target.value)} />
+                          </div>
+                        ))}
+
+                        {/* Añadir ejercicio extra */}
+                        <div style={s.extraBox}>
+                          <p style={s.extraTitle}>Añadir ejercicio extra (solo hoy)</p>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <input
+                              style={{ ...s.input, marginBottom: 0, flex: 1 }}
+                              placeholder="Nombre del ejercicio"
+                              value={newExtraName}
+                              onChange={(e) => setNewExtraName(e.target.value)}
+                              onKeyDown={(e) => e.key === "Enter" && addExtraExercise()}
+                            />
+                            <button style={s.addExtraButton} onClick={addExtraExercise}>Añadir</button>
+                          </div>
+                        </div>
+
+                        <textarea style={{ ...s.textarea, marginTop: 12 }} placeholder="Notas generales del entreno"
                           value={sessionNotes} onChange={(e) => setSessionNotes(e.target.value)} />
                         <button style={s.primaryButton} onClick={saveGymSession}>Guardar entrenamiento</button>
                       </>
@@ -617,6 +748,7 @@ const s = {
   resetButton: { border: "none", borderRadius: 14, padding: "10px 12px", background: "#ffe2e2", fontWeight: 700, cursor: "pointer" },
   twoCols: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 },
   exerciseRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: 12, border: "1px solid #eee", borderRadius: 16, marginBottom: 8, background: "#fafafa" },
+  moveButton: { border: "none", borderRadius: 10, padding: "8px 11px", background: "#e5e5e5", cursor: "pointer", fontWeight: 700, fontSize: 14, lineHeight: 1 },
   deleteButton: { border: "none", borderRadius: 12, padding: "10px 12px", background: "#ffd9d9", cursor: "pointer", fontWeight: 700 },
   logCard: { borderRadius: 16, padding: 12, marginBottom: 12, background: "#fff", border: "1px solid #ddd" },
   exerciseMeta: { fontSize: 13, color: "#555", marginTop: 6, lineHeight: 1.45 },
@@ -640,4 +772,13 @@ const s = {
   historyLine: { fontSize: 14, color: "#333", marginBottom: 4, lineHeight: 1.5 },
   historyNotes: { marginTop: 6, fontSize: 13, color: "#555" },
   emptyText: { color: "#666", margin: 0 },
+  logCardSkipped: { opacity: 0.5, background: "#f9f9f9", borderColor: "#eee" },
+  logCardExtra: { borderRadius: 16, padding: 12, marginBottom: 12, background: "#fffbf0", border: "1px solid #f0d080" },
+  skipButton: { border: "none", borderRadius: 10, padding: "6px 12px", background: "#ffd9d9", color: "#a33", fontWeight: 700, cursor: "pointer", fontSize: 12 },
+  unskipButton: { border: "none", borderRadius: 10, padding: "6px 12px", background: "#d9f0d9", color: "#2a6e2a", fontWeight: 700, cursor: "pointer", fontSize: 12 },
+  skipBadge: { display: "inline-block", fontSize: 11, background: "#ffd9d9", color: "#a33", borderRadius: 8, padding: "2px 8px", fontWeight: 700 },
+  extraBadge: { display: "inline-block", fontSize: 11, background: "#fff3cd", color: "#856404", borderRadius: 8, padding: "2px 8px", fontWeight: 700 },
+  extraBox: { border: "1px dashed #ccc", borderRadius: 14, padding: 12, marginBottom: 8, background: "#fafafa" },
+  extraTitle: { fontSize: 13, color: "#666", marginBottom: 8, fontWeight: 700 },
+  addExtraButton: { border: "none", borderRadius: 12, padding: "0 16px", background: "#111", color: "#fff", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" },
 };
