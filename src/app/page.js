@@ -272,7 +272,26 @@ export default function Page() {
           <button style={styles.resetButton} onClick={resetAll}>
             Reset
           </button>
+
+          <button
+            style={styles.secondaryButton}
+            onClick={() => {
+              const data = localStorage.getItem("gym_running_app_v2");
+              const blob = new Blob([data], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "entrenos.json";
+              a.click();
+
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Descargar datos
+          </button>
         </div>
+        
 
         <section style={styles.card}>
           <h2 style={styles.sectionTitle}>Rutinas</h2>
